@@ -5,6 +5,7 @@ from langchain_groq import ChatGroq
 from loader import load_cuad_txt_contracts
 from chunker import chunk_contracts
 from hybrid_retriever import HybridRetriever
+from output_generator import markdown_to_docx
 
 llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0, max_tokens=8000, reasoning_effort="low")
 
@@ -53,7 +54,6 @@ NEXT_QUERY: <if NO, suggest a different, more specific search query to find miss
     state["is_sufficient"] = sufficient or state["attempts"] >= 3
 
     if not sufficient and state["attempts"] < 3:
-        # Extract the suggested next query
         for line in response.split("\n"):
             if line.upper().startswith("NEXT_QUERY:"):
                 next_query = line.split(":", 1)[1].strip()
@@ -79,12 +79,6 @@ Contract excerpts:
 Answer:"""
 
     response = llm.invoke(prompt)
-    
-    # DEBUG: inspect the full response object
-    print("DEBUG - response.content:", repr(response.content))
-    print("DEBUG - response.additional_kwargs:", response.additional_kwargs)
-    print("DEBUG - response.response_metadata:", response.response_metadata)
-    
     state["final_answer"] = response.content
     print(f"[SYNTHESIZE] Answer generated ({len(state['final_answer'])} characters)")
     return state
@@ -137,3 +131,11 @@ if __name__ == "__main__":
     print("FINAL ANSWER:")
     print("=" * 80)
     print(final_state["final_answer"])
+
+    output_path = "contract_analysis_report.docx"
+    markdown_to_docx(
+        final_state["final_answer"],
+        output_path,
+        title="Contract Termination Analysis"
+    )
+    print(f"\nReport saved to: {output_path}")
